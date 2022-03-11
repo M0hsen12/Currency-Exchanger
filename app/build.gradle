@@ -18,6 +18,10 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    defaultConfig {
+        buildConfigField "String", "baseUrl", "\"https://gateway.ebay-kleinanzeigen.de\""
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -30,6 +34,9 @@ android {
     }
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+    dataBinding {
+        enabled = true
     }
 }
 
