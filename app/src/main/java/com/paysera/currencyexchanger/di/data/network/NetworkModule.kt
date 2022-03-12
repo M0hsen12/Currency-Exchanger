@@ -4,6 +4,7 @@ package com.paysera.currencyexchanger.di.data.network
 import android.content.Context
 import com.paysera.currencyexchanger.di.data.network.intercepter.HeaderInterceptor
 import com.github.pwittchen.reactivenetwork.library.rx2.Connectivity
+import com.paysera.currencyexchanger.BuildConfig
 import dagger.Module
 import dagger.Provides
 import io.reactivex.schedulers.Schedulers
@@ -57,7 +58,7 @@ class NetworkModule {
         client: OkHttpClient
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("")
+            .baseUrl(BuildConfig.baseUrl)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .addCallAdapterFactory(RxJava2CallAdapterFactory.createWithScheduler(Schedulers.io()))

@@ -2,6 +2,7 @@ package com.paysera.currencyexchanger.view.activities.main
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import com.paysera.currencyexchanger.R
 import com.paysera.currencyexchanger.databinding.ActivityMainBinding
 import com.paysera.currencyexchanger.di.viewModelsInjections.InjectionViewModelProvider
@@ -19,5 +20,9 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        viewModel = mViewModelFactoryActivity.get(this, MainActivityViewModel::class)
+        viewModel?.currencyLiveData?.observe(this){
+
+        }
     }
 }

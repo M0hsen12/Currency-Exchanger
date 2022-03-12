@@ -9,13 +9,12 @@ import okhttp3.Response
 class HeaderInterceptor constructor(
     val context: Context
 ) : Interceptor {
-    private var credentials: String = Credentials.basic("", "")
+    private var credentials: String = Credentials.basic("", "") // if we need to add something to header we do it here
 
     override fun intercept(chain: Interceptor.Chain): Response = chain.run {
         proceed(
             request()
                 .newBuilder()
-                .addHeader("Authorization",credentials)
                 .build()
         )
     }

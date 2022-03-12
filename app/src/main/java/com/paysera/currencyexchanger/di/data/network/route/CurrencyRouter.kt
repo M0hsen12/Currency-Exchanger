@@ -1,13 +1,19 @@
 package com.paysera.currencyexchanger.di.data.network.route
 
+import com.paysera.currencyexchanger.model.Currency
 import io.reactivex.Single
 import retrofit2.Response
+import retrofit2.http.Field
 import retrofit2.http.GET
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface CurrencyRouter {
 
-    @GET("mobile-api/candidate/ads/{ad_id}")
-    fun getAds(@Path("ad_id") ad_id: Int): Single<Response<String>>
+    @GET("v1/latest")
+    fun getCurrency(
+        @Query("access_key") apiKey: String,
+        @Query("symbols") symbols: String
+    ): Single<Response<Currency>>
 
 }

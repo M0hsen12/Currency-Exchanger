@@ -19,7 +19,8 @@ android {
     }
 
     defaultConfig {
-        buildConfigField "String", "baseUrl", "\"https://gateway.ebay-kleinanzeigen.de\""
+        buildConfigField "String", "baseUrl", "\"http://api.exchangeratesapi.io\""
+        buildConfigField "String", "apiKey", "\"26e2490f8d442469b4637772d9cc6d01\""
     }
 
     buildTypes {
