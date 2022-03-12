@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Currency Exchanger</string>
+    <string name="currency_convertor">Currency Convertor</string>
+    <string name="my_balance_txt">MY BALANCE</string>
+    <string name="currency_exchange_txt">CURRENCY EXCHANGE</string>
+    <string name="sell_txt">Sell</string>
+    <string name="receive_txt">Receive</string>
+    <string name="submit_txt">Submit</string>
+    <string name="eur">EUR</string>
+    <string name="usd">USD</string>
 </resources>
