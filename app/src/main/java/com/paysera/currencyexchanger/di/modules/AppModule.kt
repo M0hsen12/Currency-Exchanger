@@ -6,12 +6,14 @@ import com.paysera.currencyexchanger.di.data.network.NetworkModule
 import dagger.Module
 import dagger.Provides
 import io.reactivex.disposables.CompositeDisposable
+import com.paysera.currencyexchanger.di.data.database.DatabaseModule
 import javax.inject.Singleton
 
 
 @Module(
     includes = [
-        NetworkModule::class
+        NetworkModule::class,
+        DatabaseModule::class
     ]
 )
 open class AppModule {
