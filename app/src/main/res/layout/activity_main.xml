@@ -114,13 +114,13 @@
                 android:textColor="@color/black"
                 android:textStyle="bold"
                 app:layout_constraintBottom_toBottomOf="@+id/textView3"
-                app:layout_constraintEnd_toStartOf="@+id/textView4"
+                app:layout_constraintEnd_toStartOf="@+id/main_sell_picker"
                 app:layout_constraintStart_toEndOf="@+id/textView3"
                 app:layout_constraintTop_toTopOf="@+id/textView3"
                 tools:text="100.00" />
 
             <TextView
-                android:id="@+id/textView4"
+                android:id="@+id/main_sell_picker"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/eur"
@@ -173,13 +173,13 @@
                 android:textColor="@color/primaryGreenLight"
                 android:textStyle="bold"
                 app:layout_constraintBottom_toBottomOf="@+id/textView5"
-                app:layout_constraintEnd_toStartOf="@+id/textView6"
+                app:layout_constraintEnd_toStartOf="@+id/main_receive_picker"
                 app:layout_constraintStart_toEndOf="@+id/textView5"
                 app:layout_constraintTop_toTopOf="@+id/textView5"
                 tools:text="+110.00" />
 
             <TextView
-                android:id="@+id/textView6"
+                android:id="@+id/main_receive_picker"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/usd"

@@ -102,8 +102,8 @@ class MainActivityViewModel @Inject constructor(
     }
 
     fun getBalanceList(onListReceives: (list: List<WalletEntity>) -> Unit) {
-        disposable[3]?.dispose()
-        disposable[3] = mDataManager.databaseManager.WalletDao().all()
+        disposable[4]?.dispose()
+        disposable[4] = mDataManager.databaseManager.WalletDao().all()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
                 onListReceives.invoke(it)
@@ -111,8 +111,16 @@ class MainActivityViewModel @Inject constructor(
                 Log.e(TAG, "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
-        addDisposable(disposable[3])
+        addDisposable(disposable[4])
 
+    }
+
+    fun getCurrencyList(): List<String> {
+        val list = ArrayList<String>()
+        CurrencyDetail.values().forEach {
+            list.add(it.symbolName)
+        }
+        return list
     }
 
 
