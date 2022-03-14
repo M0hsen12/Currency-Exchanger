@@ -14,4 +14,6 @@
     <string name="ok">ok</string>
     <string name="done">done</string>
     <string name="succes_transaction">Transaction is Successful</string>
+    <string name="empty_et">please enter a amount</string>
+    <string name="sell_amount_higher">amount you enter is bigger than your balance and commission( first 5 tranaction is free )</string>
 </resources>

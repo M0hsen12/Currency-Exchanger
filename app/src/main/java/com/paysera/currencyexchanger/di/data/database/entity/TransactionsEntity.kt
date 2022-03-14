@@ -14,4 +14,4 @@ class TransactionsEntity (
     var totalAmount: Double? = null,
 
     @ColumnInfo(name = "count")
-    var count: Double? = null)
+    var count: Int? = null)

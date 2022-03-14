@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import com.paysera.currencyexchanger.BuildConfig
 import com.paysera.currencyexchanger.di.data.appManger.DataManager
+import com.paysera.currencyexchanger.di.data.database.entity.TransactionsEntity
 import com.paysera.currencyexchanger.di.data.database.entity.WalletEntity
 import com.paysera.currencyexchanger.model.Currency
 import com.paysera.currencyexchanger.util.CurrencyDetail
@@ -23,7 +24,8 @@ class MainActivityViewModel @Inject constructor(
 
     private val TAG = "QQQ"
     val currencyLiveData = MutableLiveData<Currency>()
-    val updatedWalletLiveData = MutableLiveData<Triple<WalletEntity,WalletEntity,List<WalletEntity>>>()
+    val updatedWalletLiveData =
+        MutableLiveData<Triple<WalletEntity, WalletEntity, List<WalletEntity>>>()
     var databaseUpdateProcessor = BehaviorProcessor.create<List<WalletEntity>>()
 
     init {
@@ -140,7 +142,7 @@ class MainActivityViewModel @Inject constructor(
     fun findWalletItemsWithName(
         sellNameID: String,
         receivesNameID: String,
-        onWalletReceives: (pair: Pair<WalletEntity,WalletEntity>) -> Unit
+        onWalletReceives: (pair: Pair<WalletEntity, WalletEntity>) -> Unit
     ) {
         disposable[5]?.dispose()
         disposable[5] =
@@ -162,14 +164,14 @@ class MainActivityViewModel @Inject constructor(
 
     fun updateDatabaseAfterTransaction(sell: WalletEntity, receives: WalletEntity) {
 
-        disposable[5]?.dispose()
-        disposable[5] =
+        disposable[6]?.dispose()
+        disposable[6] =
             Single.zip(
                 mDataManager.databaseManager.WalletDao().update(sell),
                 mDataManager.databaseManager.WalletDao().update(receives),
                 mDataManager.databaseManager.WalletDao().all(),
-                { sellUnit: Unit, receivesUnit: Unit,list:List<WalletEntity> ->
-                    Triple(sell, receives,list)
+                { sellUnit: Unit, receivesUnit: Unit, list: List<WalletEntity> ->
+                    Triple(sell, receives, list)
                 }
             )
                 .subscribeOn(Schedulers.io())
@@ -179,8 +181,70 @@ class MainActivityViewModel @Inject constructor(
                     Log.e(TAG, "db error: ${it.message}")
                     errorLiveData.postValue(it)
                 })
-        addDisposable(disposable[5])
+        addDisposable(disposable[6])
     }
 
+    fun getTransaction(onEnd: (transaction: TransactionsEntity) -> Unit) {
+
+        disposable[7]?.dispose()
+        disposable[7] = mDataManager.databaseManager.TransactionDao().all()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread()).subscribe({
+                Log.e(TAG, "initDatabase:transaction ${it.size}")
+                if (it.isEmpty())
+                    initTransactionDatabase(onEnd)
+                else onEnd.invoke(it.first())
+
+            }, {
+                Log.e(TAG, "getAPI: ${it.message}")
+                errorLiveData.postValue(it)
+            })
+        addDisposable(disposable[7])
+    }
+
+    private fun initTransactionDatabase(onEnd: (transaction: TransactionsEntity) -> Unit) {
+        disposable[8]?.dispose()
+        disposable[8] = mDataManager.databaseManager.TransactionDao().insert(
+            TransactionsEntity(TransactionID, TransactionAmount, TransactionCount)
+        ).flatMap {
+            mDataManager.databaseManager.TransactionDao().findValueById(TransactionID)
+
+        }.subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread()).subscribe({
+                Log.e(TAG, "tranaction : on procecor $it ${it.id}")
+                onEnd.invoke(it)
+
+            }, {
+                Log.e(TAG, "db error: ${it.message}")
+                errorLiveData.postValue(it)
+            })
+        addDisposable(disposable[8])
+
+    }
+
+    fun updateTransactionDatabase(transaction: TransactionsEntity,onEnd: () -> Unit) {
+
+        disposable[9]?.dispose()
+        disposable[9] = mDataManager.databaseManager.TransactionDao().update(transaction)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread()).subscribe({
+                Log.e(TAG, "tranasaction e: on  $it ")
+                onEnd.invoke()
+
+            }, {
+                Log.e(TAG, "db error: ${it.message}")
+                errorLiveData.postValue(it)
+            })
+        addDisposable(disposable[9])
+    }
+
+
+    companion object {
+        const val TransactionID =
+            100  // i could use enum like wallet but want to try every thing in this test project
+        const val TransactionAmount = 0.0
+        const val TransactionCount = 0
+        const val CommissionFeePercentage = 0.7
+    }
 
 }

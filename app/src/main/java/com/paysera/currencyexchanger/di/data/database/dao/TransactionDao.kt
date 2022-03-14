@@ -7,6 +7,10 @@ import io.reactivex.Single
 
 @Dao
 abstract class TransactionDao {
+
+    @Query("SELECT * FROM Transactions")
+    abstract fun all(): Single<List<TransactionsEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract fun insert(transaction: TransactionsEntity):  Single<Long>
 

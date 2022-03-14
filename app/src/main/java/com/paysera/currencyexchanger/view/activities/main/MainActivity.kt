@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.paysera.currencyexchanger.R
 import com.paysera.currencyexchanger.databinding.ActivityMainBinding
+import com.paysera.currencyexchanger.di.data.database.entity.TransactionsEntity
 import com.paysera.currencyexchanger.di.data.database.entity.WalletEntity
 import com.paysera.currencyexchanger.di.viewModelsInjections.InjectionViewModelProvider
 import com.paysera.currencyexchanger.model.Currency
@@ -17,6 +18,7 @@ import com.paysera.currencyexchanger.util.*
 import com.paysera.currencyexchanger.view.adapters.UserBalanceAdapter
 import com.paysera.currencyexchanger.view.base.BaseActivity
 import com.paysera.currencyexchanger.viewModel.activities.main.MainActivityViewModel
+import com.paysera.currencyexchanger.viewModel.activities.main.MainActivityViewModel.Companion.CommissionFeePercentage
 import io.reactivex.disposables.CompositeDisposable
 import java.util.ArrayList
 import javax.inject.Inject
@@ -35,6 +37,8 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
     private var userBalanceList = ArrayList<WalletEntity>()
     private var sellAmount = 0.0
     private var receivesAmount = 0.0
+    private var commissionFeeAmount = 0.0
+    private var transactionCount = 0
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,11 +62,28 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
     private fun initSubmitBtn() {
         binding.mainSubmitBtn.apply {
             setOnClickListener {
-                if (sellState == receiveState || binding.mainSellEt.text.isEmpty()) {
-                    sameStateToast()
-                    return@setOnClickListener
+                sellAmount
+                getUserSellCurrencyAmount()
+                possibleCommission()
+                when {
+                    sellState == receiveState -> {
+                        showToast(getString(R.string.same_currency))
+
+                    }
+                    binding.mainSellEt.text.isEmpty() -> {
+                        showToast(getString(R.string.empty_et))
+                        return@setOnClickListener
+                    }
+                    sellAmount < (getUserSellCurrencyAmount() + possibleCommission()) -> {
+                        showToast(getString(R.string.sell_amount_higher))
+                        return@setOnClickListener
+                    }
+
+                    else -> {
+                        updateDatabaseAfterSubmit()
+                    }
+
                 }
-                updateDatabaseAfterSubmit()
 
 
             }
@@ -70,20 +91,44 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
         }
     }
 
+    private fun possibleCommission(): Double {
+        Log.e("eee", "possibleCommission: ${getCommission(transactionCount)}")
+        return if (transactionCount < 5) 0.0 else getCommission(transactionCount)
+    }
+
+
     private fun updateDatabaseAfterSubmit() {
         viewModel?.findWalletItemsWithName(sellState.symbolName, receiveState.symbolName) {
-            Log.e(
-                "eee",
-                "updateDatabaseAfterSubmit:${it.first.symbolName} ,, ${it.first.amount} "
-            )
-            it.first.amount = it.first.amount?.minus(sellAmount)
-            it.second.amount = it.second.amount?.plus(receivesAmount)
-            Log.e("eee", "updateDatAFTER: ${it.first.symbolName} ,, ${it.first.amount} ")
-            updateWalletForDatabase(it.first, it.second)
+
+            viewModel?.getTransaction { transition ->
+                transactionCount = transition.count?.plus(1) ?: 0
+                transition.count = transactionCount
+                commissionFeeAmount = getCommission(transition.count ?: 0)
+                transition.totalAmount = commissionFeeAmount
+                updateTransactionDatabase(transition)
+                Log.e("eee", "updateDatabase commision: $sellAmount")
+                it.first.amount = it.first.amount?.minus(sellAmount + commissionFeeAmount)
+                it.second.amount = it.second.amount?.plus(receivesAmount)
+
+                updateWalletForDatabase(it.first, it.second)
+            }
 
 
         }
 
+    }
+
+    private fun updateTransactionDatabase(transition: TransactionsEntity) {
+        viewModel?.updateTransactionDatabase(transition) {
+            Log.e("eee", "updateTransactionDatabase: transaction done")
+        }
+    }
+
+    private fun getCommission(transitionCount: Int): Double {
+        Log.e("eee", "getCommission: count ${transitionCount}")
+        return if (transitionCount <= 5)
+            0.0
+        else (CommissionFeePercentage / sellAmount) * 100
     }
 
     private fun updateWalletForDatabase(sell: WalletEntity, receives: WalletEntity) {
@@ -123,14 +168,16 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
 
     }
 
+    private fun getUserSellCurrencyAmount(): Double =
+        userBalanceList.find { it.symbolName == sellState.symbolName }?.amount ?: 0.0
+
     private fun changeCurrency(amount: String) {
         if (sellState == receiveState) {
-            sameStateToast()
+            showToast(getString(R.string.same_currency))
             return
         }
-        val userCurrentSellAmount =
-            userBalanceList.find { it.symbolName == sellState.symbolName }?.amount ?: 0.0
-        if (amount.toDouble() < userCurrentSellAmount) {
+
+        if (amount.toDouble() < getUserSellCurrencyAmount()) {
 
             receivesAmount = amount.toDouble() * calculateTheCurrencyRate()
             sellAmount = amount.toDouble()
@@ -183,14 +230,14 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
             textView.text = txt
             dialog.dismiss()
             if (sellState == receiveState)
-                sameStateToast()
+                showToast(getString(R.string.same_currency))
         }.show()
 
 
     }
 
-    private fun sameStateToast() {
-        Toast.makeText(this, getString(R.string.same_currency), Toast.LENGTH_LONG).show()
+    private fun showToast(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
     private fun initBalanceRv() {
@@ -245,14 +292,27 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
             msg = createSuccessMsg()
         ) {
             it.dismiss()
+            refreshAmounts()
         }.show()
 
+    }
+
+    private fun refreshAmounts() {
+
+        commissionFeeAmount = 0.0
+        sellAmount = 0.0
+        receivesAmount = 0.0
     }
 
     private fun createSuccessMsg(): String =
         "You have Converted ${makeDoubleToDecimalFormat(sellAmount)} ${sellState.symbolName} to ${
             makeDoubleToDecimalFormat(receivesAmount)
-        } ${receiveState.symbolName} . Commission free -0.70 ${sellState.symbolName}"
+        } ${receiveState.symbolName} . Commission fee ${
+            if (commissionFeeAmount == 0.0) " for first 5 transaction is free and your count is $transactionCount " else
+                makeDoubleToDecimalFormat(
+                    commissionFeeAmount
+                ).plus(" ") + sellState.symbolName
+        } ."
 
 
     override fun onDestroy() {
