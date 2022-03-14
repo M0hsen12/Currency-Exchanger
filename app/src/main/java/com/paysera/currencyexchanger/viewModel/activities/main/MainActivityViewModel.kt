@@ -9,12 +9,16 @@ import com.paysera.currencyexchanger.di.data.database.entity.WalletEntity
 import com.paysera.currencyexchanger.model.Currency
 import com.paysera.currencyexchanger.util.CurrencyDetail
 import com.paysera.currencyexchanger.view.base.BaseViewModel
+import io.reactivex.Observable
+import io.reactivex.Observable.interval
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.functions.Consumer
 import io.reactivex.processors.BehaviorProcessor
 import io.reactivex.schedulers.Schedulers
-import java.util.ArrayList
+import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 class MainActivityViewModel @Inject constructor(
@@ -38,21 +42,42 @@ class MainActivityViewModel @Inject constructor(
     private fun getAPI() {
 
         disposable[1]?.dispose()
-        disposable[1] = mDataManager.networkManager.getCurrencyRouter()
-            .getCurrency(BuildConfig.apiKey, "USD,BGN,JPY,EUR")
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread()).subscribe({
-                if (it.isSuccessful) {
-                    addRateToCurrencyDetail(it.body())
-                    currencyLiveData.postValue(it.body())
-
+        disposable[1] =
+            interval(
+                5,
+                TimeUnit.SECONDS
+            ).observeOn(AndroidSchedulers.mainThread()) // we can use Work manger too but we dont need its services so interval will do the job
+                .subscribe(
+                    this::apiCall
+                ) {
+                    Log.e(TAG, "getAPI: ${it.message} ")
                 }
 
-            }, {
-                Log.e(TAG, "getAPI: ${it.message}")
-                errorLiveData.postValue(it)
-            })
+
         addDisposable(disposable[1])
+    }
+
+    private fun apiCall(long: Long = 0) {
+        Log.e("OOO", "apiCall: in a call")
+        disposable[10]?.dispose()
+        disposable[10] =
+            mDataManager.networkManager.getCurrencyRouter()
+                .getCurrency(BuildConfig.apiKey, "USD,BGN,JPY,EUR")
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+
+                .subscribe({
+                    if (it.isSuccessful) {
+                        addRateToCurrencyDetail(it.body())
+                        currencyLiveData.postValue(it.body())
+
+                    }
+
+                }, {
+                    Log.e(TAG, "getAPI: ${it.message}")
+                    errorLiveData.postValue(it)
+                })
+        addDisposable(disposable[10])
     }
 
     private fun addRateToCurrencyDetail(currency: Currency?) {
@@ -222,7 +247,7 @@ class MainActivityViewModel @Inject constructor(
 
     }
 
-    fun updateTransactionDatabase(transaction: TransactionsEntity,onEnd: () -> Unit) {
+    fun updateTransactionDatabase(transaction: TransactionsEntity, onEnd: () -> Unit) {
 
         disposable[9]?.dispose()
         disposable[9] = mDataManager.databaseManager.TransactionDao().update(transaction)

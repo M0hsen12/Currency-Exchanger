@@ -1,6 +1,7 @@
 package com.paysera.currencyexchanger.di.data.network.route
 
 import com.paysera.currencyexchanger.model.Currency
+import io.reactivex.Observable
 import io.reactivex.Single
 import retrofit2.Response
 import retrofit2.http.Field
@@ -14,6 +15,6 @@ interface CurrencyRouter {
     fun getCurrency(
         @Query("access_key") apiKey: String,
         @Query("symbols") symbols: String
-    ): Single<Response<Currency>>
+    ): Observable<Response<Currency>>
 
 }
