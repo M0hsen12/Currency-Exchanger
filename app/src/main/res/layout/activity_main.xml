@@ -101,13 +101,13 @@
                 app:layout_constraintTop_toTopOf="@+id/imageView" />
 
             <EditText
-                android:id="@+id/editText"
+                android:id="@+id/main_sell_et"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_margin="8dp"
                 android:background="@null"
                 android:gravity="end"
-                android:inputType="number"
+                android:inputType="numberDecimal"
                 android:lines="1"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
@@ -129,9 +129,9 @@
                 android:textStyle="bold"
                 app:drawableEndCompat="@drawable/ic_arrow_head"
                 app:drawableTint="@color/black"
-                app:layout_constraintBottom_toBottomOf="@+id/editText"
+                app:layout_constraintBottom_toBottomOf="@+id/main_sell_et"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@+id/editText" />
+                app:layout_constraintTop_toTopOf="@+id/main_sell_et" />
 
             <ImageView
                 android:id="@+id/imageView2"
@@ -159,15 +159,16 @@
                 app:layout_constraintStart_toEndOf="@+id/imageView2"
                 app:layout_constraintTop_toTopOf="@+id/imageView2" />
 
-            <EditText
-                android:id="@+id/editText2"
+            <TextView
+                android:id="@+id/main_receives_tv"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_margin="8dp"
                 android:background="@null"
                 android:gravity="end"
-                android:inputType="number"
                 android:lines="1"
+                android:padding="4dp"
+                android:textSize="18sp"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:textColor="@color/primaryGreenLight"
@@ -188,15 +189,15 @@
                 android:textStyle="bold"
                 app:drawableEndCompat="@drawable/ic_arrow_head"
                 app:drawableTint="@color/black"
-                app:layout_constraintBottom_toBottomOf="@+id/editText2"
+                app:layout_constraintBottom_toBottomOf="@+id/main_receives_tv"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@+id/editText2" />
+                app:layout_constraintTop_toTopOf="@+id/main_receives_tv" />
 
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/main_btn_submit"
+            android:id="@+id/main_submit_btn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/mainMarginLeft"

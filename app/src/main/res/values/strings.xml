@@ -11,4 +11,7 @@
     <string name="sell_currency_txt">pleas pick currency for sell</string>
     <string name="buy_currency_txt">pleas pick currency for buy</string>
     <string name="same_currency">both sell and receive currency cant be the same, please change one currency</string>
+    <string name="ok">ok</string>
+    <string name="done">done</string>
+    <string name="succes_transaction">Transaction is Successful</string>
 </resources>

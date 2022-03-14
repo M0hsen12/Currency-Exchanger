@@ -11,7 +11,7 @@ abstract class WalletDao {
     abstract fun all(): Single<List<WalletEntity>>
 
     @Query("SELECT * FROM wallet WHERE symbolName LIKE :name LIMIT 1")
-    abstract fun findByName(name: String): WalletEntity
+    abstract fun findByName(name: String): Single<WalletEntity>
 
     @Query("SELECT * FROM wallet WHERE id LIKE :id LIMIT 1")
     abstract fun findByID(id: Int): WalletEntity
@@ -23,7 +23,7 @@ abstract class WalletDao {
     abstract fun insertAll(wallets: ArrayList<WalletEntity>):Single<Unit>
 
     @Update
-    abstract fun update(wallet: WalletEntity)
+    abstract fun update(wallet: WalletEntity):Single<Unit>
 
 
 

@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import com.paysera.currencyexchanger.R
 import com.paysera.currencyexchanger.di.data.database.entity.WalletEntity
+import com.paysera.currencyexchanger.util.makeDoubleToDecimalFormat
 import kotlinx.android.synthetic.main.item_user_balance.view.*
 
 class UserBalanceAdapter() :
@@ -61,7 +62,7 @@ class UserBalanceAdapter() :
 
         fun bind(item: WalletEntity) = with(itemView) {
 
-            itemView.item_user_balance_txt.text = "${item.amount} ${item.symbolName}"
+            itemView.item_user_balance_txt.text = "${makeDoubleToDecimalFormat(item.amount)} ${item.symbolName}"
         }
     }
 }

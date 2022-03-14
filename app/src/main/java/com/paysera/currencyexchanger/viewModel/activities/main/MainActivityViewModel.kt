@@ -8,6 +8,7 @@ import com.paysera.currencyexchanger.di.data.database.entity.WalletEntity
 import com.paysera.currencyexchanger.model.Currency
 import com.paysera.currencyexchanger.util.CurrencyDetail
 import com.paysera.currencyexchanger.view.base.BaseViewModel
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.processors.BehaviorProcessor
@@ -22,11 +23,12 @@ class MainActivityViewModel @Inject constructor(
 
     private val TAG = "QQQ"
     val currencyLiveData = MutableLiveData<Currency>()
+    val updatedWalletLiveData = MutableLiveData<Triple<WalletEntity,WalletEntity,List<WalletEntity>>>()
     var databaseUpdateProcessor = BehaviorProcessor.create<List<WalletEntity>>()
 
     init {
 
-//        getAPI()
+        getAPI()
         initDatabase()
     }
 
@@ -38,14 +40,26 @@ class MainActivityViewModel @Inject constructor(
             .getCurrency(BuildConfig.apiKey, "USD,BGN,JPY,EUR")
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
-                if (it.isSuccessful)
+                if (it.isSuccessful) {
+                    addRateToCurrencyDetail(it.body())
                     currencyLiveData.postValue(it.body())
+
+                }
 
             }, {
                 Log.e(TAG, "getAPI: ${it.message}")
                 errorLiveData.postValue(it)
             })
         addDisposable(disposable[1])
+    }
+
+    private fun addRateToCurrencyDetail(currency: Currency?) {
+        currency?.rates?.let {
+            CurrencyDetail.USD.CurrencyRate = it.usd
+            CurrencyDetail.BGN.CurrencyRate = it.bgn
+            CurrencyDetail.EUR.CurrencyRate = it.eur
+        }
+
     }
 
     private fun initDatabase() {
@@ -70,7 +84,7 @@ class MainActivityViewModel @Inject constructor(
         disposable[3] = mDataManager.databaseManager.WalletDao().insertAll(
             firstTimeInitDatabase()
         ).flatMap {
-             mDataManager.databaseManager.WalletDao().all()
+            mDataManager.databaseManager.WalletDao().all()
 
         }.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
@@ -121,6 +135,51 @@ class MainActivityViewModel @Inject constructor(
             list.add(it.symbolName)
         }
         return list
+    }
+
+    fun findWalletItemsWithName(
+        sellNameID: String,
+        receivesNameID: String,
+        onWalletReceives: (pair: Pair<WalletEntity,WalletEntity>) -> Unit
+    ) {
+        disposable[5]?.dispose()
+        disposable[5] =
+            Single.zip(
+                mDataManager.databaseManager.WalletDao().findByName(sellNameID),
+                mDataManager.databaseManager.WalletDao().findByName(receivesNameID),
+                { sell: WalletEntity, receives: WalletEntity ->
+                    Pair(sell, receives)
+                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread()).subscribe({
+                    onWalletReceives.invoke(it)
+                }, {
+                    Log.e(TAG, "db error: ${it.message}")
+                    errorLiveData.postValue(it)
+                })
+        addDisposable(disposable[5])
+    }
+
+    fun updateDatabaseAfterTransaction(sell: WalletEntity, receives: WalletEntity) {
+
+        disposable[5]?.dispose()
+        disposable[5] =
+            Single.zip(
+                mDataManager.databaseManager.WalletDao().update(sell),
+                mDataManager.databaseManager.WalletDao().update(receives),
+                mDataManager.databaseManager.WalletDao().all(),
+                { sellUnit: Unit, receivesUnit: Unit,list:List<WalletEntity> ->
+                    Triple(sell, receives,list)
+                }
+            )
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread()).subscribe({
+                    updatedWalletLiveData.postValue(it) // i could send only list , its only thing we need but i like Triple :))
+                }, {
+                    Log.e(TAG, "db error: ${it.message}")
+                    errorLiveData.postValue(it)
+                })
+        addDisposable(disposable[5])
     }
 
 
