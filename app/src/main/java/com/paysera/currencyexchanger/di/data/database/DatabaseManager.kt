@@ -10,7 +10,7 @@ import com.paysera.currencyexchanger.di.data.database.entity.WalletEntity
 
 
 @Database(
-    entities = [WalletEntity::class,TransactionsEntity::class],
+    entities = [WalletEntity::class, TransactionsEntity::class],
     version = 1,
     exportSchema = false
 )

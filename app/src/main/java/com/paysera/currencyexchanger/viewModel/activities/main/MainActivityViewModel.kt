@@ -26,14 +26,13 @@ class MainActivityViewModel @Inject constructor(
     compositeDisposable: CompositeDisposable
 ) : BaseViewModel(dataManager, compositeDisposable) {
 
-    private val TAG = "QQQ"
     val currencyLiveData = MutableLiveData<Currency>()
     val updatedWalletLiveData =
         MutableLiveData<Triple<WalletEntity, WalletEntity, List<WalletEntity>>>()
     var databaseUpdateProcessor = BehaviorProcessor.create<List<WalletEntity>>()
 
     init {
-
+        apiCall()
         getAPI()
         initDatabase()
     }
@@ -50,7 +49,7 @@ class MainActivityViewModel @Inject constructor(
                 .subscribe(
                     this::apiCall
                 ) {
-                    Log.e(TAG, "getAPI: ${it.message} ")
+                    Log.e("TAG", "getAPI: ${it.message} ")
                 }
 
 
@@ -58,11 +57,10 @@ class MainActivityViewModel @Inject constructor(
     }
 
     private fun apiCall(long: Long = 0) {
-        Log.e("OOO", "apiCall: in a call")
         disposable[10]?.dispose()
         disposable[10] =
             mDataManager.networkManager.getCurrencyRouter()
-                .getCurrency(BuildConfig.apiKey, "USD,BGN,JPY,EUR")
+                .getCurrency(BuildConfig.apiKey, SYMBOL_REQUEST)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
 
@@ -74,7 +72,7 @@ class MainActivityViewModel @Inject constructor(
                     }
 
                 }, {
-                    Log.e(TAG, "getAPI: ${it.message}")
+                    Log.e("TAG", "getAPI: ${it.message}")
                     errorLiveData.postValue(it)
                 })
         addDisposable(disposable[10])
@@ -94,12 +92,12 @@ class MainActivityViewModel @Inject constructor(
         disposable[2] = mDataManager.databaseManager.WalletDao().all()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
-                Log.e(TAG, "initDatabase: ${it.size}")
+
                 if (it.isEmpty())
                     firstTimeWalletToDatabase()
 
             }, {
-                Log.e(TAG, "getAPI: ${it.message}")
+                Log.e("TAG", "getAPI: ${it.message}")
                 errorLiveData.postValue(it)
             })
         addDisposable(disposable[2])
@@ -116,11 +114,10 @@ class MainActivityViewModel @Inject constructor(
         }.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
 
-                Log.e(TAG, "addWalletToDatabase: on procecor ${it.size}")
                 databaseUpdateProcessor.onNext(it)
 
             }, {
-                Log.e(TAG, "db error: ${it.message}")
+                Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
         addDisposable(disposable[3])
@@ -149,7 +146,7 @@ class MainActivityViewModel @Inject constructor(
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
                 onListReceives.invoke(it)
             }, {
-                Log.e(TAG, "db error: ${it.message}")
+                Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
         addDisposable(disposable[4])
@@ -181,7 +178,7 @@ class MainActivityViewModel @Inject constructor(
                 .observeOn(AndroidSchedulers.mainThread()).subscribe({
                     onWalletReceives.invoke(it)
                 }, {
-                    Log.e(TAG, "db error: ${it.message}")
+                    Log.e("TAG", "db error: ${it.message}")
                     errorLiveData.postValue(it)
                 })
         addDisposable(disposable[5])
@@ -203,7 +200,7 @@ class MainActivityViewModel @Inject constructor(
                 .observeOn(AndroidSchedulers.mainThread()).subscribe({
                     updatedWalletLiveData.postValue(it) // i could send only list , its only thing we need but i like Triple :))
                 }, {
-                    Log.e(TAG, "db error: ${it.message}")
+                    Log.e("TAG", "db error: ${it.message}")
                     errorLiveData.postValue(it)
                 })
         addDisposable(disposable[6])
@@ -215,13 +212,12 @@ class MainActivityViewModel @Inject constructor(
         disposable[7] = mDataManager.databaseManager.TransactionDao().all()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
-                Log.e(TAG, "initDatabase:transaction ${it.size}")
                 if (it.isEmpty())
                     initTransactionDatabase(onEnd)
                 else onEnd.invoke(it.first())
 
             }, {
-                Log.e(TAG, "getAPI: ${it.message}")
+                Log.e("TAG", "getAPI: ${it.message}")
                 errorLiveData.postValue(it)
             })
         addDisposable(disposable[7])
@@ -236,11 +232,10 @@ class MainActivityViewModel @Inject constructor(
 
         }.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
-                Log.e(TAG, "tranaction : on procecor $it ${it.id}")
                 onEnd.invoke(it)
 
             }, {
-                Log.e(TAG, "db error: ${it.message}")
+                Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
         addDisposable(disposable[8])
@@ -253,23 +248,42 @@ class MainActivityViewModel @Inject constructor(
         disposable[9] = mDataManager.databaseManager.TransactionDao().update(transaction)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
-                Log.e(TAG, "tranasaction e: on  $it ")
                 onEnd.invoke()
 
             }, {
-                Log.e(TAG, "db error: ${it.message}")
+                Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
         addDisposable(disposable[9])
     }
 
+    fun getBalanceAndTransactionForSubmit(
+        symbol: String,
+        onProcessFinish: (Pair<WalletEntity, List<TransactionsEntity>>) -> Unit
+    ) {
+        disposable[11]?.dispose()
+        disposable[11] = Single.zip(mDataManager.databaseManager.WalletDao().findByName(symbol),
+            mDataManager.databaseManager.TransactionDao().all(), { wallet, transaction ->
+                Pair(wallet, transaction)
+            }).subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread()).subscribe({
+                onProcessFinish.invoke(it)
+            }, {
+                Log.e("TAG", "db error: ${it.message}")
+                errorLiveData.postValue(it)
+            })
+        addDisposable(disposable[11])
+    }
+
 
     companion object {
         const val TransactionID =
-            100  // i could use enum like wallet but want to try every thing in this test project
+            100  // i could use enum  but want to try every thing in this test project
         const val TransactionAmount = 0.0
         const val TransactionCount = 0
         const val CommissionFeePercentage = 0.7
+        const val SYMBOL_REQUEST =
+            "USD,BGN,JPY,EUR" // super weird api ,, wont work on list or array i had to use it like this
     }
 
 }

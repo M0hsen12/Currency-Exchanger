@@ -60,40 +60,51 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
     }
 
     private fun initSubmitBtn() {
-        binding.mainSubmitBtn.apply {
-            setOnClickListener {
-                sellAmount
-                getUserSellCurrencyAmount()
-                possibleCommission()
-                when {
-                    sellState == receiveState -> {
-                        showToast(getString(R.string.same_currency))
-
-                    }
-                    binding.mainSellEt.text.isEmpty() -> {
-                        showToast(getString(R.string.empty_et))
-                        return@setOnClickListener
-                    }
-                    sellAmount < (getUserSellCurrencyAmount() + possibleCommission()) -> {
-                        showToast(getString(R.string.sell_amount_higher))
-                        return@setOnClickListener
-                    }
-
-                    else -> {
-                        updateDatabaseAfterSubmit()
-                    }
-
-                }
-
-
+        binding.mainSubmitBtn.setOnClickListener {
+            if (binding.mainSellEt.text.isEmpty()) {
+                showToast(getString(R.string.empty_et))
+                return@setOnClickListener
             }
+            viewModel?.getBalanceAndTransactionForSubmit(sellState.symbolName) {
+                validateSubmitBtn(it)
+            }
+        }
+
+    }
+
+    private fun validateSubmitBtn(it: Pair<WalletEntity, List<TransactionsEntity>>) {
+        val currentSellValue = binding.mainSellEt.text.toString().toDouble()
+
+        when {
+            sellState == receiveState ->
+                showToast(getString(R.string.same_currency))
+
+            currentSellValue > (it.first.amount ?: 0 + getPossibleCommission(
+                it.second,
+                currentSellValue
+            )) -> {
+                showToast(getString(R.string.sell_amount_higher))
+                return
+            }
+
+            else ->
+                updateDatabaseAfterSubmit()
+
 
         }
     }
 
-    private fun possibleCommission(): Double {
-        Log.e("eee", "possibleCommission: ${getCommission(transactionCount)}")
-        return if (transactionCount < 5) 0.0 else getCommission(transactionCount)
+    private fun getPossibleCommission(
+        list: List<TransactionsEntity>,
+        currentSellValue: Double
+    ): Double {
+
+        return when {
+            list.isEmpty() -> 0.0
+            list.first().count ?: 0 <= 5 -> 0.0
+            else -> getCommission(list.first().count ?: 0, currentSellValue)
+        }
+
     }
 
 
@@ -101,20 +112,35 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
         viewModel?.findWalletItemsWithName(sellState.symbolName, receiveState.symbolName) {
 
             viewModel?.getTransaction { transition ->
-                transactionCount = transition.count?.plus(1) ?: 0
-                transition.count = transactionCount
-                commissionFeeAmount = getCommission(transition.count ?: 0)
-                transition.totalAmount = commissionFeeAmount
-                updateTransactionDatabase(transition)
-                Log.e("eee", "updateDatabase commision: $sellAmount")
-                it.first.amount = it.first.amount?.minus(sellAmount + commissionFeeAmount)
-                it.second.amount = it.second.amount?.plus(receivesAmount)
 
-                updateWalletForDatabase(it.first, it.second)
+                doTransactionStaff(transition)
+
+                doWalletStaff(it)
+
             }
-
-
         }
+    }
+
+    private fun doWalletStaff(it: Pair<WalletEntity, WalletEntity>) {
+
+        it.first.amount = it.first.amount?.minus(sellAmount + commissionFeeAmount)
+        it.second.amount = it.second.amount?.plus(receivesAmount)
+
+        updateWalletForDatabase(it.first, it.second)
+
+    }
+
+    private fun doTransactionStaff(transition: TransactionsEntity) {
+        transition.count?.plus(1)?.let {
+            transition.count = it
+            transactionCount = it
+        }
+        getCommission(transition.count ?: 0, sellAmount).let {
+            commissionFeeAmount = it
+            transition.totalAmount = it
+        }
+
+        updateTransactionDatabase(transition)
 
     }
 
@@ -124,8 +150,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
         }
     }
 
-    private fun getCommission(transitionCount: Int): Double {
-        Log.e("eee", "getCommission: count ${transitionCount}")
+    private fun getCommission(transitionCount: Int, sellAmount: Double): Double {
         return if (transitionCount <= 5)
             0.0
         else (CommissionFeePercentage / sellAmount) * 100
@@ -161,10 +186,6 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
 
         }
 
-        binding.mainReceivesTv.apply {
-
-        }
-
 
     }
 
@@ -189,10 +210,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
     }
 
     private fun calculateTheCurrencyRate(): Double {
-        Log.e(
-            "TAG",
-            "CalculateTheCurrencyRate:${sellState.CurrencyRate / receiveState.CurrencyRate} === ${sellState.CurrencyRate} === ${receiveState.CurrencyRate}  "
-        )
+
         return receiveState.CurrencyRate / sellState.CurrencyRate
 
     }
@@ -224,13 +242,16 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
             list,
             if (isSelling) getString(R.string.sell_currency_txt) else getString(R.string.buy_currency_txt)
         ) { txt, dialog ->
-            if (isSelling) sellState = CurrencyDetail.valueOf(txt)
-            else receiveState = CurrencyDetail.valueOf(txt)
+
             clearEditTexts()
+
             textView.text = txt
+
+            CurrencyDetail.valueOf(txt).let {
+                if (isSelling) sellState = it else receiveState = it
+            }
+
             dialog.dismiss()
-            if (sellState == receiveState)
-                showToast(getString(R.string.same_currency))
         }.show()
 
 
@@ -247,7 +268,6 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
             layoutManager = LinearLayoutManager(this.context, LinearLayoutManager.HORIZONTAL, false)
             adapter = myAdapter
             viewModel?.getBalanceList {
-                Log.e("QQQ", "initBalanceRv: ${it.size}")
                 updateWalletListForUI(it)
             }
         }
@@ -263,14 +283,11 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
 
         viewModel?.apply {
             currencyLiveData.observe(this@MainActivity) {
-                Log.e("WWW", "observeData: currency rate USD ${CurrencyDetail.USD.CurrencyRate}")
                 latestCurrency = it
 
             }
             this@MainActivity.disposable.add(databaseUpdateProcessor.subscribe {
-                Log.e("QQQ", "observeData: on main")
-                userBalanceList = it as ArrayList<WalletEntity>
-                myAdapter?.submitList(it)
+              updateWalletListForUI(it)
 
             })
             updatedWalletLiveData.observe(this@MainActivity) {
@@ -278,6 +295,9 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
                 clearEditTexts()
                 showSuccessDialog()
             }
+            errorLiveData.observe(this@MainActivity,{
+                Log.e("TAG", "observeData:${it.message} " )
+            })
         }
 
 
