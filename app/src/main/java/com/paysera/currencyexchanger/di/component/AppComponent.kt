@@ -4,6 +4,7 @@ import android.content.Context
 import com.paysera.currencyexchanger.App
 import com.paysera.currencyexchanger.di.modules.ActivityInjectorsModule
 import com.paysera.currencyexchanger.di.modules.AppModule
+import com.paysera.currencyexchanger.di.modules.ViewModelFactoryModule
 import dagger.BindsInstance
 import dagger.Component
 import dagger.android.AndroidInjector
