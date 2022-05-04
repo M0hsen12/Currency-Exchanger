@@ -4,6 +4,9 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Context
 import android.content.DialogInterface
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
 import android.text.Editable
 import android.text.SpannableString
 import android.view.ContextThemeWrapper
@@ -74,7 +77,7 @@ fun materialDialog(
     context: Context,
     cancelable: Boolean = false,
     title: String? = null,
-    msg:String?=null,
+    msg: String? = null,
     onPositiveClicked: ((dialog: DialogInterface) -> Unit)? = null
 ): AlertDialog.Builder {
     val builder = AlertDialog.Builder(context)
@@ -82,12 +85,43 @@ fun materialDialog(
     builder.setMessage(msg)
     builder.setCancelable(cancelable)
     builder.setPositiveButton(R.string.done) { dialog, which ->
-onPositiveClicked?.invoke(dialog )
+        onPositiveClicked?.invoke(dialog)
     }
     return builder
 }
 
-fun makeDoubleToDecimalFormat(double: Double?):String = DecimalFormat("#0.00").format(double)
+fun makeDoubleToDecimalFormat(double: Double?): String = DecimalFormat("#0.00").format(double)
 fun showOnlyTwoDigitOfDouble(double: Double?): String? = DecimalFormat("#.##").format(double)
+
+fun isInternetAvailable(context: Context): Boolean {
+    var result = false
+    val connectivityManager =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        val networkCapabilities = connectivityManager.activeNetwork ?: return false
+        val actNw =
+            connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
+        result = when {
+            actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+            actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+            actNw.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+            else -> false
+        }
+    } else {
+        connectivityManager.run {
+            connectivityManager.activeNetworkInfo?.run {
+                result = when (type) {
+                    ConnectivityManager.TYPE_WIFI -> true
+                    ConnectivityManager.TYPE_MOBILE -> true
+                    ConnectivityManager.TYPE_ETHERNET -> true
+                    else -> false
+                }
+
+            }
+        }
+    }
+
+    return result
+}
 
 

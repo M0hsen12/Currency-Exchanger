@@ -16,4 +16,6 @@
     <string name="succes_transaction">Transaction is Successful</string>
     <string name="empty_et">please enter a amount</string>
     <string name="sell_amount_higher">amount you enter is bigger than your balance and commission( first 5 tranaction is free )</string>
+    <string name="titleConnectionError">Your device is not connected to Internet</string>
+    <string name="msgConnectionError">for getting latest currency detail, we need to connect to our server.</string>
 </resources>

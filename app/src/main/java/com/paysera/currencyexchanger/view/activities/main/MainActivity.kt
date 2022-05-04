@@ -1,5 +1,7 @@
 package com.paysera.currencyexchanger.view.activities.main
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.text.Editable
 import android.text.InputFilter
@@ -20,8 +22,8 @@ import com.paysera.currencyexchanger.view.base.BaseActivity
 import com.paysera.currencyexchanger.viewModel.activities.main.MainActivityViewModel
 import com.paysera.currencyexchanger.viewModel.activities.main.MainActivityViewModel.Companion.CommissionFeePercentage
 import io.reactivex.disposables.CompositeDisposable
-import java.util.ArrayList
 import javax.inject.Inject
+
 
 class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() {
 
@@ -51,6 +53,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
 
     private fun initUI() {
         viewModel = mViewModelFactoryActivity.get(this, MainActivityViewModel::class)
+        checkForInternetConnection()
         initBalanceRv()
         initCurrencyPickers()
         initEditTexts()
@@ -59,15 +62,35 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
 
     }
 
+    private fun checkForInternetConnection() {
+        if (!isInternetAvailable(this))
+            showConnectionDialog().show()
+    }
+
+    private fun showConnectionDialog() =
+        materialDialog(
+            context = this,
+            cancelable = true,
+            title = getString(R.string.titleConnectionError),
+            msg = getString(R.string.msgConnectionError),
+            onPositiveClicked = {
+                it.dismiss()
+            }
+        )
+
+
     private fun initSubmitBtn() {
         binding.mainSubmitBtn.setOnClickListener {
-            if (binding.mainSellEt.text.isEmpty()) {
-                showToast(getString(R.string.empty_et))
-                return@setOnClickListener
-            }
-            viewModel?.getBalanceAndTransactionForSubmit(sellState.symbolName) {
-                validateSubmitBtn(it)
-            }
+            if (isInternetAvailable(this)){
+                if (binding.mainSellEt.text.isEmpty()) {
+                    showToast(getString(R.string.empty_et))
+                    return@setOnClickListener
+                }
+                viewModel?.getBalanceAndTransactionForSubmit(sellState.symbolName) {
+                    validateSubmitBtn(it)
+                }
+            } else showConnectionDialog().show()
+
         }
 
     }
@@ -287,7 +310,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
 
             }
             this@MainActivity.disposable.add(databaseUpdateProcessor.subscribe {
-              updateWalletListForUI(it)
+                updateWalletListForUI(it)
 
             })
             updatedWalletLiveData.observe(this@MainActivity) {
@@ -295,9 +318,9 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainActivityViewModel>() 
                 clearEditTexts()
                 showSuccessDialog()
             }
-            errorLiveData.observe(this@MainActivity,{
-                Log.e("TAG", "observeData:${it.message} " )
-            })
+            errorLiveData.observe(this@MainActivity) {
+                Log.e("TAG", "observeData:${it.message} ")
+            }
         }
 
 

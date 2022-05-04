@@ -9,12 +9,10 @@ import com.paysera.currencyexchanger.di.data.database.entity.WalletEntity
 import com.paysera.currencyexchanger.model.Currency
 import com.paysera.currencyexchanger.util.CurrencyDetail
 import com.paysera.currencyexchanger.view.base.BaseViewModel
-import io.reactivex.Observable
 import io.reactivex.Observable.interval
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.functions.Consumer
 import io.reactivex.processors.BehaviorProcessor
 import io.reactivex.schedulers.Schedulers
 import java.util.*
@@ -32,50 +30,28 @@ class MainActivityViewModel @Inject constructor(
     var databaseUpdateProcessor = BehaviorProcessor.create<List<WalletEntity>>()
 
     init {
-        apiCall()
-        getAPI()
+        getCurrency()
+        loopInterval()
         initDatabase()
     }
 
 
-    private fun getAPI() {
+    private fun loopInterval() {
 
-        disposable[1]?.dispose()
-        disposable[1] =
+        disposable[disposableInterval]?.dispose()
+        disposable[disposableInterval] =
             interval(
                 5,
                 TimeUnit.SECONDS
             ).observeOn(AndroidSchedulers.mainThread()) // we can use Work manger too but we dont need its services so interval will do the job
                 .subscribe(
-                    this::apiCall
+                    this::getCurrency
                 ) {
                     Log.e("TAG", "getAPI: ${it.message} ")
                 }
 
 
-        addDisposable(disposable[1])
-    }
-
-    private fun apiCall(long: Long = 0) {
-        disposable[10]?.dispose()
-        disposable[10] =
-            mDataManager.networkManager.getCurrencyRouter()
-                .getCurrency(BuildConfig.apiKey, SYMBOL_REQUEST)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-
-                .subscribe({
-                    if (it.isSuccessful) {
-                        addRateToCurrencyDetail(it.body())
-                        currencyLiveData.postValue(it.body())
-
-                    }
-
-                }, {
-                    Log.e("TAG", "getAPI: ${it.message}")
-                    errorLiveData.postValue(it)
-                })
-        addDisposable(disposable[10])
+        addDisposable(disposable[disposableInterval])
     }
 
     private fun addRateToCurrencyDetail(currency: Currency?) {
@@ -88,8 +64,8 @@ class MainActivityViewModel @Inject constructor(
     }
 
     private fun initDatabase() {
-        disposable[2]?.dispose()
-        disposable[2] = mDataManager.databaseManager.WalletDao().all()
+        disposable[disposableInitDatabase]?.dispose()
+        disposable[disposableInitDatabase] = mDataManager.databaseManager.WalletDao().all()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
 
@@ -100,13 +76,13 @@ class MainActivityViewModel @Inject constructor(
                 Log.e("TAG", "getAPI: ${it.message}")
                 errorLiveData.postValue(it)
             })
-        addDisposable(disposable[2])
+        addDisposable(disposable[disposableInitDatabase])
     }
 
     private fun firstTimeWalletToDatabase() { // first Time User Here and we should give user 1000 EUR
 
-        disposable[3]?.dispose()
-        disposable[3] = mDataManager.databaseManager.WalletDao().insertAll(
+        disposable[disposableFirstTimeWallet]?.dispose()
+        disposable[disposableFirstTimeWallet] = mDataManager.databaseManager.WalletDao().insertAll(
             firstTimeInitDatabase()
         ).flatMap {
             mDataManager.databaseManager.WalletDao().all()
@@ -120,7 +96,7 @@ class MainActivityViewModel @Inject constructor(
                 Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
-        addDisposable(disposable[3])
+        addDisposable(disposable[disposableFirstTimeWallet])
 
 
     }
@@ -140,8 +116,8 @@ class MainActivityViewModel @Inject constructor(
     }
 
     fun getBalanceList(onListReceives: (list: List<WalletEntity>) -> Unit) {
-        disposable[4]?.dispose()
-        disposable[4] = mDataManager.databaseManager.WalletDao().all()
+        disposable[disposableGetBalanceList]?.dispose()
+        disposable[disposableGetBalanceList] = mDataManager.databaseManager.WalletDao().all()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
                 onListReceives.invoke(it)
@@ -149,7 +125,7 @@ class MainActivityViewModel @Inject constructor(
                 Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
-        addDisposable(disposable[4])
+        addDisposable(disposable[disposableGetBalanceList])
 
     }
 
@@ -166,14 +142,14 @@ class MainActivityViewModel @Inject constructor(
         receivesNameID: String,
         onWalletReceives: (pair: Pair<WalletEntity, WalletEntity>) -> Unit
     ) {
-        disposable[5]?.dispose()
-        disposable[5] =
+        disposable[disposableFindWalletItems]?.dispose()
+        disposable[disposableFindWalletItems] =
             Single.zip(
                 mDataManager.databaseManager.WalletDao().findByName(sellNameID),
-                mDataManager.databaseManager.WalletDao().findByName(receivesNameID),
-                { sell: WalletEntity, receives: WalletEntity ->
-                    Pair(sell, receives)
-                })
+                mDataManager.databaseManager.WalletDao().findByName(receivesNameID)
+            ) { sell: WalletEntity, receives: WalletEntity ->
+                Pair(sell, receives)
+            }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread()).subscribe({
                     onWalletReceives.invoke(it)
@@ -181,21 +157,20 @@ class MainActivityViewModel @Inject constructor(
                     Log.e("TAG", "db error: ${it.message}")
                     errorLiveData.postValue(it)
                 })
-        addDisposable(disposable[5])
+        addDisposable(disposable[disposableFindWalletItems])
     }
 
     fun updateDatabaseAfterTransaction(sell: WalletEntity, receives: WalletEntity) {
 
-        disposable[6]?.dispose()
-        disposable[6] =
+        disposable[disposableUpdateDatabase]?.dispose()
+        disposable[disposableUpdateDatabase] =
             Single.zip(
                 mDataManager.databaseManager.WalletDao().update(sell),
                 mDataManager.databaseManager.WalletDao().update(receives),
-                mDataManager.databaseManager.WalletDao().all(),
-                { sellUnit: Unit, receivesUnit: Unit, list: List<WalletEntity> ->
-                    Triple(sell, receives, list)
-                }
-            )
+                mDataManager.databaseManager.WalletDao().all()
+            ) { sellUnit: Unit, receivesUnit: Unit, list: List<WalletEntity> ->
+                Triple(sell, receives, list)
+            }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread()).subscribe({
                     updatedWalletLiveData.postValue(it) // i could send only list , its only thing we need but i like Triple :))
@@ -203,13 +178,13 @@ class MainActivityViewModel @Inject constructor(
                     Log.e("TAG", "db error: ${it.message}")
                     errorLiveData.postValue(it)
                 })
-        addDisposable(disposable[6])
+        addDisposable(disposable[disposableUpdateDatabase])
     }
 
     fun getTransaction(onEnd: (transaction: TransactionsEntity) -> Unit) {
 
-        disposable[7]?.dispose()
-        disposable[7] = mDataManager.databaseManager.TransactionDao().all()
+        disposable[disposableGetTransaction]?.dispose()
+        disposable[disposableGetTransaction] = mDataManager.databaseManager.TransactionDao().all()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
                 if (it.isEmpty())
@@ -220,12 +195,12 @@ class MainActivityViewModel @Inject constructor(
                 Log.e("TAG", "getAPI: ${it.message}")
                 errorLiveData.postValue(it)
             })
-        addDisposable(disposable[7])
+        addDisposable(disposable[disposableGetTransaction])
     }
 
     private fun initTransactionDatabase(onEnd: (transaction: TransactionsEntity) -> Unit) {
-        disposable[8]?.dispose()
-        disposable[8] = mDataManager.databaseManager.TransactionDao().insert(
+        disposable[disposableInitTransaction]?.dispose()
+        disposable[disposableInitTransaction] = mDataManager.databaseManager.TransactionDao().insert(
             TransactionsEntity(TransactionID, TransactionAmount, TransactionCount)
         ).flatMap {
             mDataManager.databaseManager.TransactionDao().findValueById(TransactionID)
@@ -238,14 +213,14 @@ class MainActivityViewModel @Inject constructor(
                 Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
-        addDisposable(disposable[8])
+        addDisposable(disposable[disposableInitTransaction])
 
     }
 
     fun updateTransactionDatabase(transaction: TransactionsEntity, onEnd: () -> Unit) {
 
-        disposable[9]?.dispose()
-        disposable[9] = mDataManager.databaseManager.TransactionDao().update(transaction)
+        disposable[disposableUpdateTransaction]?.dispose()
+        disposable[disposableUpdateTransaction] = mDataManager.databaseManager.TransactionDao().update(transaction)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
                 onEnd.invoke()
@@ -254,25 +229,47 @@ class MainActivityViewModel @Inject constructor(
                 Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
-        addDisposable(disposable[9])
+        addDisposable(disposable[disposableUpdateTransaction])
+    }
+
+    private fun getCurrency(long: Long = 0) {
+        disposable[disposableGetCurrency]?.dispose()
+        disposable[disposableGetCurrency] =
+            mDataManager.networkManager.getCurrencyRouter()
+                .getCurrency(BuildConfig.apiKey, SYMBOL_REQUEST)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+                    if (it.isSuccessful) {
+                        addRateToCurrencyDetail(it.body())
+                        currencyLiveData.postValue(it.body())
+
+                    }
+
+                }, {
+                    Log.e("TAG", "getAPI:$long ${it.message}")
+                    errorLiveData.postValue(it)
+                })
+        addDisposable(disposable[disposableGetCurrency])
     }
 
     fun getBalanceAndTransactionForSubmit(
         symbol: String,
         onProcessFinish: (Pair<WalletEntity, List<TransactionsEntity>>) -> Unit
     ) {
-        disposable[11]?.dispose()
-        disposable[11] = Single.zip(mDataManager.databaseManager.WalletDao().findByName(symbol),
-            mDataManager.databaseManager.TransactionDao().all(), { wallet, transaction ->
-                Pair(wallet, transaction)
-            }).subscribeOn(Schedulers.io())
+        disposable[disposableGetBalanceAndTransaction]?.dispose()
+        disposable[disposableGetBalanceAndTransaction] = Single.zip(mDataManager.databaseManager.WalletDao().findByName(symbol),
+            mDataManager.databaseManager.TransactionDao().all()
+        ) { wallet, transaction ->
+            Pair(wallet, transaction)
+        }.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread()).subscribe({
                 onProcessFinish.invoke(it)
             }, {
                 Log.e("TAG", "db error: ${it.message}")
                 errorLiveData.postValue(it)
             })
-        addDisposable(disposable[11])
+        addDisposable(disposable[disposableGetBalanceAndTransaction])
     }
 
 
@@ -284,6 +281,17 @@ class MainActivityViewModel @Inject constructor(
         const val CommissionFeePercentage = 0.7
         const val SYMBOL_REQUEST =
             "USD,BGN,JPY,EUR" // super weird api ,, wont work on list or array i had to use it like this
+        const val disposableInterval = 1
+        const val disposableInitDatabase = 2
+        const val disposableFirstTimeWallet = 3
+        const val disposableGetBalanceList = 4
+        const val disposableFindWalletItems = 5
+        const val disposableUpdateDatabase = 6
+        const val disposableGetTransaction = 7
+        const val disposableInitTransaction = 8
+        const val disposableUpdateTransaction = 9
+        const val disposableGetCurrency= 10
+        const val disposableGetBalanceAndTransaction= 11
     }
 
 }
